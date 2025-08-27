@@ -1,54 +1,83 @@
-import { theme } from '../theme/theme';
-import { buttonStyles } from '../theme/components';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, Alert } from 'react-native';
+import PostService from '../services/PostService';
+import StyledButton from '../components/StyledButton';
+import { colors } from '../theme/colors';
+import { fontSizes } from '../theme/typography';
 
-// CreatePostScreen.js
-// This component provides the UI for a user to create a new discussion post.
-// It's designed to be simple and intuitive, encouraging content creation.
+const CreatePostScreen = ({ navigation }) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-const CreatePostScreen = () => {
-  // This object simulates the UI structure of the Create Post screen.
-  const UIElements = {
-    header: {
-      title: 'Create Post',
-      postNowButton: {
-        text: 'Post Now',
-        style: { ...buttonStyles.primary, paddingVertical: 8, paddingHorizontal: 16 }, // A smaller button for the header
-        // onPress would trigger the post creation logic
-      },
-    },
-    titleInput: {
-      placeholder: 'Post Title...',
-      maxLength: 150, // A reasonable limit for a title
-      style: {
-        fontSize: theme.fontSizes.title,
-        padding: 16,
-      },
-    },
-    contentInput: {
-      placeholder: 'Start Writing Here...',
-      multiline: true,
-      style: {
-        fontSize: theme.fontSizes.body,
-        padding: 16,
-        flex: 1, // Takes up available space
-      },
-    },
-    imageGallery: {
-      title: 'Add Images',
-      uploadedImages: [
-        // This array would hold the selected image URIs for preview
-        { uri: 'path/to/uploaded_image_1.png' },
-        { uri: 'path/to/uploaded_image_2.png' },
-      ],
-      uploadButton: {
-        icon: 'plus-box-outline',
-        text: 'Upload Image',
-      },
-    },
-    // The main bottom navigation bar would also be present on this screen.
+  const handlePost = () => {
+    if (!title.trim() || !content.trim()) {
+      Alert.alert('Error', 'Please fill out both the title and content.');
+      return;
+    }
+    setIsSubmitting(true);
+    PostService.createPost({ title, content })
+      .then(() => {
+        Alert.alert('Success', 'Your post has been created!');
+        navigation.goBack();
+      })
+      .catch(err => {
+        console.error(err);
+        Alert.alert('Error', 'Could not create your post. Please try again.');
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
-  return UIElements;
+  return (
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <Text style={styles.headerTitle}>Create a New Post</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Post Title..."
+        value={title}
+        onChangeText={setTitle}
+      />
+      <TextInput
+        style={[styles.input, styles.contentInput]}
+        placeholder="Start Writing Here..."
+        value={content}
+        onChangeText={setContent}
+        multiline
+      />
+      <StyledButton
+        title={isSubmitting ? 'Posting...' : 'Post Now'}
+        onPress={handlePost}
+        disabled={isSubmitting}
+      />
+    </ScrollView>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: colors.white,
+  },
+  headerTitle: {
+    fontSize: fontSizes.largeTitle,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  input: {
+    borderColor: colors.grey,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: fontSizes.body,
+    marginBottom: 16,
+  },
+  contentInput: {
+    height: 200,
+    textAlignVertical: 'top', // For Android
+  },
+});
 
 export default CreatePostScreen;

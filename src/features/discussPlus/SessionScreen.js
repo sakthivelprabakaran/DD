@@ -1,49 +1,61 @@
-import { theme } from '../../theme/theme';
-import { buttonStyles } from '../../theme/components';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import StyledButton from '../../components/StyledButton';
+import { colors } from '../../theme/colors';
+import { fontSizes } from '../../theme/typography';
 
-// SessionScreen.js
-// This component represents the live session interface for a Discuss+ call.
-// It would adapt based on whether the session is a 'Voice Call' or 'Chat'.
+const SessionScreen = ({ route, navigation }) => {
+  const { slot } = route.params;
+  const [timer, setTimer] = useState(slot.duration * 60); // Timer in seconds
 
-const SessionScreen = () => {
-  // This object simulates the UI structure of the live session screen.
-  const UIElements = {
-    header: {
-      // Shows who the user is connected with and a session timer.
-      connectedWith: 'GadgetGuru',
-      sessionTimer: '14:59', // A countdown timer
-    },
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Navigate to rating screen when timer ends
+          navigation.replace('Rating', { bookingId: 'some-booking-id' });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [navigation]);
 
-    // This view is for a VOICE CALL session.
-    voiceSessionView: {
-      isVisible: true, // This would be conditional on the session type
-      participants: [
-        { username: 'CurrentUser', profilePictureUrl: 'path/to/user.png', isMuted: false },
-        { username: 'GadgetGuru', profilePictureUrl: 'path/to/author.png', isMuted: false },
-      ],
-      controls: {
-        muteButton: { icon: 'microphone-off' },
-        speakerButton: { icon: 'volume-high' },
-        endCallButton: { icon: 'phone-hangup', style: { backgroundColor: theme.colors.error } },
-      },
-    },
-
-    // This view is for a CHAT session.
-    chatSessionView: {
-      isVisible: false, // This would be conditional on the session type
-      messageHistory: [
-        { sender: 'GadgetGuru', text: 'Hi there! What can I help you with today?' },
-        { sender: 'CurrentUser', text: 'I was wondering about the battery life on the new phone you reviewed.' },
-      ],
-      messageInput: {
-        placeholder: 'Type a message...',
-        sendButton: { icon: 'send' },
-      },
-      endChatButton: { text: 'End Session' },
-    },
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
-  return UIElements;
+  const handleEndSession = () => {
+    setTimer(1); // End the session early
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Session in Progress</Text>
+      <Text style={styles.timer}>{formatTime(timer)}</Text>
+      <View style={styles.content}>
+        {slot.type === 'Voice Call' ? (
+          <Text style={styles.sessionType}>📞 Voice Call View 📞</Text>
+        ) : (
+          <Text style={styles.sessionType}>💬 Chat View 💬</Text>
+        )}
+      </View>
+      <StyledButton title="End Session" onPress={handleEndSession} style={styles.endButton} />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, alignItems: 'center' },
+  title: { fontSize: fontSizes.title, fontWeight: 'bold' },
+  timer: { fontSize: fontSizes.largeTitle, marginVertical: 20 },
+  content: { flex: 1, justifyContent: 'center' },
+  sessionType: { fontSize: fontSizes.subtitle },
+  endButton: { backgroundColor: colors.error },
+});
 
 export default SessionScreen;

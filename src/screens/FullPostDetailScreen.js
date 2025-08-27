@@ -1,60 +1,64 @@
-import { theme } from '../theme/theme';
-import { fontStyles } from '../theme/typography';
-import { buttonStyles } from '../theme/components';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import PostService from '../services/PostService';
+import { colors } from '../theme/colors';
+import { fontSizes, fontStyles } from '../theme/typography';
+import Card from '../components/Card';
 
-// FullPostDetailScreen.js
-// This component displays the full content of a single post, along with
-// the discussion/comment thread below it.
+const FullPostDetailScreen = ({ route }) => {
+  const { postId } = route.params;
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-const CommentComponent = {
-  // Simulates a single comment in the discussion thread.
-  user: {
-    profilePictureUrl: 'path/to/commenter_avatar.png',
-    username: 'ReplyGuy',
-    usernameStyle: fontStyles.username,
-  },
-  commentText: 'Great review! I was wondering about the camera quality in low light. Have you tested that?',
-  timestamp: '2h ago',
+  useEffect(() => {
+    PostService.getPostById(postId)
+      .then(setPost)
+      .finally(() => setLoading(false));
+  }, [postId]);
+
+  if (loading) {
+    return <ActivityIndicator size="large" style={styles.loader} />;
+  }
+
+  if (!post) {
+    return <Text style={styles.errorText}>Post not found.</Text>;
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Image style={styles.avatar} source={{ uri: post.author.avatarUrl }} />
+        <Text style={fontStyles.username}>{post.author.username}</Text>
+      </View>
+      <Text style={styles.title}>{post.title}</Text>
+      <Text style={styles.description}>{post.description}</Text>
+
+      <Card style={styles.commentsCard}>
+        <Text style={styles.sectionTitle}>Discussion</Text>
+        {post.comments && post.comments.map(comment => (
+          <View key={comment.id} style={styles.commentContainer}>
+            <Text style={styles.commentAuthor}>{comment.author.username}:</Text>
+            <Text style={styles.commentText}>{comment.text}</Text>
+          </View>
+        ))}
+      </Card>
+    </ScrollView>
+  );
 };
 
-const FullPostDetailScreen = () => {
-  // This object simulates the complete UI structure of the post detail screen.
-  const UIElements = {
-    postAuthorInfo: {
-      // Typically shown at the top of the post
-      profilePictureUrl: 'path/to/author_avatar.png',
-      username: 'GadgetGuru',
-    },
-    postBody: {
-      title: 'Exploring the new M3 MacBook Air',
-      titleStyle: fontStyles.largeTitle,
-      fullDescription: 'Just spent a week with the M3 MacBook Air. It is faster than I expected, but there are a few key things to consider before you upgrade. The first thing you notice is the screen, which is incredibly bright and color-accurate. The keyboard feels great, and the battery life has been phenomenal for my workflow...',
-      descriptionStyle: fontStyles.body,
-      images: [
-        { source: 'path/to/full_image_1.png' },
-        { source: 'path/to/full_image_2.png' },
-      ],
-    },
-    actionToolbar: {
-      likeButton: { icon: 'heart-outline', count: 256 },
-      discussButton: { icon: 'comment-outline' },
-      discussPlusButton: { icon: 'star-circle-outline', style: { ...buttonStyles.primary, ...{backgroundColor: theme.colors.secondary} } }, // Highlighted button
-      shareButton: { icon: 'share-outline' },
-    },
-    discussionSection: {
-      title: 'Discussion',
-      comments: [
-        CommentComponent,
-        { ...CommentComponent, commentText: 'Thanks for the question! Low light is decent, but not class-leading.'}
-      ],
-      newCommentInput: {
-        placeholder: 'Add to the discussion...',
-        submitButton: { text: 'Post' },
-      },
-    },
-  };
-
-  return UIElements;
-};
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.white, padding: 16 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { textAlign: 'center', marginTop: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+  title: { ...fontStyles.postTitle, fontSize: fontSizes.largeTitle, marginBottom: 16 },
+  description: { ...fontStyles.description, fontSize: fontSizes.body, lineHeight: 24, marginBottom: 24 },
+  commentsCard: { backgroundColor: '#f0f2f5' },
+  sectionTitle: { fontSize: fontSizes.title, fontWeight: 'bold', marginBottom: 12 },
+  commentContainer: { marginBottom: 10 },
+  commentAuthor: { fontWeight: 'bold', marginBottom: 2 },
+  commentText: {},
+});
 
 export default FullPostDetailScreen;

@@ -1,64 +1,73 @@
-import { theme } from '../theme/theme';
-import { buttonStyles } from '../theme/components';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, FlatList, Alert, TouchableOpacity } from 'react-native';
+import StyledButton from '../components/StyledButton';
+import UserService from '../services/UserService';
+import { colors } from '../theme/colors';
+import { fontSizes } from '../theme/typography';
 
-// DeviceManagementScreen.js
-// This component allows users to manage the list of devices
-// displayed on their "Currently Using" section on their profile.
+const DeviceManagementScreen = ({ navigation }) => {
+  const [devices, setDevices] = useState([]);
+  const [deviceName, setDeviceName] = useState('');
+  const [yearsOfUse, setYearsOfUse] = useState('');
 
-const DeviceManagementScreen = () => {
-  // This object simulates the UI structure of the Device Management screen.
-  const UIElements = {
-    header: {
-      title: 'Manage My Devices',
-      // Typically a "Done" or "Back" button would be here to close the screen.
-      closeButton: { text: 'Done' },
-    },
+  useEffect(() => {
+    // Fetch initial devices
+    UserService.getUserProfile('some-user-id').then(user => {
+      setDevices(user.devices);
+    });
+  }, []);
 
-    // A form to add or edit a device. This could be at the top or appear when an "Add" button is tapped.
-    deviceForm: {
-      title: 'Add/Edit Device',
-      deviceNameInput: {
-        label: 'Device Name',
-        placeholder: 'e.g., iPhone 15 Pro'
-      },
-      deviceCategoryPicker: {
-        label: 'Category',
-        options: ["Smartphone", "Laptop", "Tablet", "Headphones", "Smartwatch", "Other"],
-        // The selected value would be part of the component's state.
-      },
-      yearsOfUseInput: {
-        label: 'Years of Use',
-        placeholder: 'e.g., 2.5'
-      },
-      shortNoteInput: {
-        label: 'Short Note (Optional)',
-        placeholder: "e.g., 'Best for editing videos'",
-        maxLength: 200,
-        multiline: true,
-      },
-      saveButton: {
-        text: 'Save Device',
-        style: buttonStyles.primary,
-        // onPress would handle the logic to save or update the device.
-      },
-    },
-
-    // A list of devices the user has already added.
-    currentDevicesList: {
-      title: 'Your Devices',
-      devices: [
-        {
-          name: 'Pixel 8 Pro',
-          category: 'Smartphone',
-          note: 'My daily driver.',
-          editButton: { icon: 'pencil' },
-          deleteButton: { icon: 'delete', color: theme.colors.error },
-        },
-      ],
-    },
+  const handleAddDevice = () => {
+    if (!deviceName || !yearsOfUse) {
+      Alert.alert('Error', 'Please fill out all fields.');
+      return;
+    }
+    UserService.addDevice('some-user-id', { name: deviceName, yearsOfUse })
+      .then(newDevice => {
+        setDevices([...devices, newDevice]);
+        setDeviceName('');
+        setYearsOfUse('');
+      });
   };
 
-  return UIElements;
+  const handleDeleteDevice = (deviceId) => {
+    UserService.deleteDevice('some-user-id', deviceId).then(() => {
+      setDevices(devices.filter(d => d.id !== deviceId));
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.addForm}>
+        <Text style={styles.sectionTitle}>Add a New Device</Text>
+        <TextInput style={styles.input} placeholder="Device Name (e.g., iPhone 15 Pro)" value={deviceName} onChangeText={setDeviceName} />
+        <TextInput style={styles.input} placeholder="Years of Use (e.g., 1.5 years)" value={yearsOfUse} onChangeText={setYearsOfUse} />
+        <StyledButton title="Add Device" onPress={handleAddDevice} />
+      </View>
+      <FlatList
+        data={devices}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.deviceItem}>
+            <Text>{item.name} ({item.yearsOfUse})</Text>
+            <TouchableOpacity onPress={() => handleDeleteDevice(item.id)}>
+              <Text style={styles.deleteButton}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        ListHeaderComponent={<Text style={styles.sectionTitle}>Your Devices</Text>}
+      />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.white },
+  addForm: { padding: 20, borderBottomWidth: 1, borderColor: '#eee' },
+  sectionTitle: { fontSize: fontSizes.title, fontWeight: 'bold', marginBottom: 10 },
+  input: { borderColor: colors.grey, borderWidth: 1, borderRadius: 8, padding: 12, fontSize: fontSizes.body, marginBottom: 16 },
+  deviceItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#eee' },
+  deleteButton: { color: colors.error, fontWeight: 'bold' },
+});
 
 export default DeviceManagementScreen;

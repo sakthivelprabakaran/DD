@@ -1,54 +1,69 @@
-import { theme } from '../theme/theme';
-import { cardStyles, iconStyles, buttonStyles } from '../theme/components';
-import { fontStyles } from '../theme/typography';
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, Text, ActivityIndicator } from 'react-native';
+import PostCard from '../components/PostCard';
+import PostService from '../services/PostService';
+import SearchBar from '../components/SearchBar';
+import { colors } from '../theme/colors';
+import { fontSizes } from '../theme/typography';
 
-// HomeScreen.js
-// This component represents the main feed of the Device Discuss app.
-// It includes the search bar at the top and a list of discussion posts.
+const HomeScreen = ({ navigation }) => {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const PostCardComponent = {
-  // This object simulates a single post card component, detailing its structure and style.
-  style: cardStyles.container,
-  userProfile: {
-    profilePictureUrl: 'path/to/user_avatar.png',
-    username: 'GadgetGuru',
-    usernameStyle: fontStyles.username,
-  },
-  followButton: {
-    text: 'Follow',
-    style: buttonStyles.secondary, // A smaller, less prominent button
-  },
-  postContent: {
-    title: 'Exploring the new M3 MacBook Air',
-    titleStyle: fontStyles.postTitle,
-    shortDescription: 'Just spent a week with the M3 MacBook Air. It is faster than I expected, but there are a few key things to consider before you upgrade...',
-    descriptionStyle: fontStyles.description,
-    imagePreviewUrl: 'path/to/macbook_preview.png',
-  },
-  actionButtons: {
-    like: { icon: 'heart-outline', count: 256, style: iconStyles },
-    discuss: { icon: 'comment-outline', text: 'Discuss', style: iconStyles },
-    discussPlus: { icon: 'star-circle-outline', text: 'Discuss+', style: iconStyles },
-    share: { icon: 'share-outline', style: iconStyles },
-  },
-};
+  useEffect(() => {
+    PostService.getFeedPosts()
+      .then(setPosts)
+      .finally(() => setLoading(false));
+  }, []);
 
-const HomeScreen = () => {
-  // This object simulates the complete UI structure of the Home Screen.
-  const UIElements = {
-    searchBar: {
-      placeholder: 'Search for Discussions',
-      searchIcon: 'magnify', // Name of a material design icon
-    },
-    feed: [
-      // The feed is an array of post card components.
-      PostCardComponent,
-      // In a real app, this data would come from an API call.
-      { ...PostCardComponent, userProfile: { ...PostCardComponent.userProfile, username: 'RetroTech' } },
-    ],
+  const handleSearch = (query) => {
+    navigation.navigate('SearchResults', { query });
   };
 
-  return UIElements;
+  if (loading) {
+    return <ActivityIndicator size="large" style={styles.loader} />;
+  }
+
+  return (
+    <FlatList
+      style={styles.container}
+      data={posts}
+      renderItem={({ item }) => (
+        <PostCard
+          post={item}
+          onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+          onDiscussPlusPress={() => navigation.navigate('Booking', { authorId: item.author.id })}
+        />
+      )}
+      keyExtractor={item => item.id}
+      ListHeaderComponent={
+        <>
+          <Text style={styles.headerTitle}>Device Discuss</Text>
+          <SearchBar onSearch={handleSearch} />
+        </>
+      }
+    />
+  );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f2f5',
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: fontSizes.largeTitle,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: '#f0f2f5',
+  },
+});
 
 export default HomeScreen;

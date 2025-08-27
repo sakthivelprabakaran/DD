@@ -1,54 +1,77 @@
-import { theme } from '../../theme/theme';
-import { buttonStyles } from '../../theme/components';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import DiscussPlusService from './DiscussPlusService';
+import StyledButton from '../../components/StyledButton';
+import { colors } from '../../theme/colors';
+import { fontSizes } from '../../theme/typography';
 
-// BookingScreen.js
-// This component provides the UI for a user to book a Discuss+ session with a creator.
-// It guides the user through selecting a slot, payment, and confirmation.
+const BookingScreen = ({ route, navigation }) => {
+  const { authorId } = route.params;
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
-const BookingScreen = () => {
-  // This object simulates the UI structure of the Booking screen.
-  // In a real app, this would be a stateful component that interacts with DiscussPlusService.
-  const UIElements = {
-    header: {
-      title: 'Book a Session with [AuthorName]',
-      // Back button to close the booking flow.
-    },
+  useEffect(() => {
+    DiscussPlusService.getAuthorAvailability(authorId)
+      .then(response => setSlots(response.slots))
+      .finally(() => setLoading(false));
+  }, [authorId]);
 
-    // Step 1: Select a time slot
-    availabilityPicker: {
-      title: 'Select an Available Slot',
-      // Data for slots would be fetched using DiscussPlusService.getAuthorAvailability()
-      availableSlots: [
-        { slotId: 'slot_abc', startTime: '2023-11-10T18:00:00Z', duration: 15, price: 10.00, type: 'Voice Call' },
-        { slotId: 'slot_def', startTime: '2023-11-10T18:30:00Z', duration: 15, price: 10.00, type: 'Voice Call' },
-      ],
-      // The UI would be a calendar or a list of time slots.
-    },
+  const handleBooking = () => {
+    if (!selectedSlot) return;
 
-    // Step 2: Confirm and Pay (appears after a slot is selected)
-    paymentSection: {
-      isVisible: false, // Becomes true when a slot is selected
-      selectedSlotInfo: 'You have selected: 15 min Voice Call on Nov 10 at 18:00.',
-      priceDisplay: 'Price: $10.00',
-      paymentButton: {
-        text: 'Confirm & Pay',
-        style: buttonStyles.primary,
-        // onPress would call DiscussPlusService.processPayment(), and then DiscussPlusService.createBooking().
-      },
-    },
-
-    // Step 3: Confirmation (appears after successful payment)
-    confirmationView: {
-      isVisible: false, // Becomes true after successful booking
-      icon: 'check-circle',
-      message: 'Your booking is confirmed! A notification will be sent before your session starts.',
-      doneButton: {
-        text: 'Done',
-      }
-    },
+    DiscussPlusService.processPayment({ amount: selectedSlot.price })
+      .then(paymentResult => {
+        if (paymentResult.success) {
+          return DiscussPlusService.createBooking('current-user-id', selectedSlot.slotId, paymentResult.transactionId);
+        } else {
+          throw new Error('Payment failed');
+        }
+      })
+      .then(() => {
+        Alert.alert('Success', 'Your session is booked!');
+        navigation.navigate('Session', { slot: selectedSlot }); // Navigate to the session screen
+      })
+      .catch(err => {
+        Alert.alert('Error', 'Could not complete booking.');
+        console.error(err);
+      });
   };
 
-  return UIElements;
+  if (loading) {
+    return <ActivityIndicator size="large" style={styles.loader} />;
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Available Slots</Text>
+      {slots.map(slot => (
+        <TouchableOpacity
+          key={slot.slotId}
+          style={[styles.slot, selectedSlot?.slotId === slot.slotId && styles.selectedSlot]}
+          onPress={() => setSelectedSlot(slot)}
+        >
+          <Text>{new Date(slot.startTime).toLocaleString()}</Text>
+          <Text>${slot.price.toFixed(2)} ({slot.duration} min)</Text>
+        </TouchableOpacity>
+      ))}
+      <StyledButton
+        title="Confirm & Book"
+        onPress={handleBooking}
+        disabled={!selectedSlot}
+        style={styles.bookButton}
+      />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: fontSizes.title, fontWeight: 'bold', marginBottom: 16 },
+  slot: { padding: 16, borderWidth: 1, borderColor: colors.grey, borderRadius: 8, marginBottom: 10 },
+  selectedSlot: { borderColor: colors.primary, borderWidth: 2, backgroundColor: '#e0f7ff' },
+  bookButton: { marginTop: 'auto' },
+});
 
 export default BookingScreen;

@@ -1,3 +1,6 @@
+import { StyleSheet } from 'react-native';
+import { colors } from './colors';
+
 // Using system fonts as a proxy for SF Pro (iOS) and Google Sans/Roboto (Android)
 // This ensures the app feels native on each platform.
 export const fonts = {
@@ -15,11 +18,12 @@ export const fontSizes = {
   caption: 12,
 };
 
-export const fontStyles = {
+// Use StyleSheet.create for performance optimizations and style validation.
+export const fontStyles = StyleSheet.create({
   postTitle: {
     fontFamily: fonts.primary.bold,
     fontSize: fontSizes.title,
-    color: '#212529', // From colors.js text.primary
+    color: colors.text.primary,
   },
   username: {
     fontFamily: fonts.primary.bold,
@@ -28,10 +32,11 @@ export const fontStyles = {
   description: {
     fontFamily: fonts.primary.regular,
     fontSize: fontSizes.body,
+    color: colors.text.secondary,
   },
   buttonText: {
     fontFamily: fonts.primary.bold,
     fontSize: fontSizes.body,
-    color: '#FFFFFF', // White text for buttons
+    color: colors.white,
   },
-};
+});

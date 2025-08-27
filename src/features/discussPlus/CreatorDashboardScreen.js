@@ -1,64 +1,64 @@
-import { theme } from '../../theme/theme';
-import { buttonStyles } from '../../theme/components';
-
-// CreatorDashboardScreen.js
-// This component is the main UI for creators to manage their Discuss+ feature.
-// It would only be accessible to eligible users, as determined by the DiscussPlusService.
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import DiscussPlusService from './DiscussPlusService';
+import Card from '../../components/Card';
+import { colors } from '../../theme/colors';
+import { fontSizes } from '../../theme/typography';
 
 const CreatorDashboardScreen = () => {
-  // This object simulates the UI structure of the Creator Dashboard.
-  // In a real app, this would be a stateful component fetching data from DiscussPlusService.
-  const UIElements = {
-    header: {
-      title: 'Creator Dashboard',
-      // A back button would navigate the user back to their profile.
-    },
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // This view would be shown if the user is not yet eligible.
-    // The visibility would be controlled based on the result of
-    // DiscussPlusService.checkDashboardEligibility().
-    eligibilityGate: {
-      isVisible: false, // This is true if the user is NOT eligible.
-      message: 'You need at least 1000 followers and 20 posts to unlock the Creator Dashboard.',
-      style: {
-        padding: 20,
-        textAlign: 'center',
-        color: theme.colors.text.secondary,
-      }
-    },
+  useEffect(() => {
+    // Assuming the logged-in user is the creator
+    DiscussPlusService.getDashboardData('current-user-id')
+      .then(setDashboardData)
+      .finally(() => setLoading(false));
+  }, []);
 
-    // Main dashboard content, visible only if the user is eligible.
-    dashboardContent: {
-      isVisible: true, // This is true if the user IS eligible.
-      sections: [
-        {
-          title: 'Manage Availability',
-          // This would contain a UI to add/edit/delete time slots for different session types.
-          // e.g., A calendar view or a list of configurable time blocks.
-          component: 'AvailabilityManager',
-        },
-        {
-          title: 'Set Pricing',
-          // This would contain a UI to define price points for different session durations and types.
-          // e.g., A list of editable pricing tiers (e.g., "15 min Voice Call - $10").
-          component: 'PricingManager',
-        },
-        {
-          title: 'Earnings Summary',
-          // Displays total and pending earnings fetched from the service.
-          // e.g., "Total Earned: $1250.00", "Pending Clearance: $150.00"
-          component: 'EarningsSummary',
-        },
-        {
-          title: 'Booking History',
-          // A searchable, sortable list of past and upcoming bookings.
-          component: 'BookingHistoryList',
-        }
-      ]
-    }
-  };
+  if (loading) {
+    return <ActivityIndicator size="large" style={styles.loader} />;
+  }
 
-  return UIElements;
+  if (!dashboardData) {
+    return <Text style={styles.errorText}>Could not load dashboard data.</Text>;
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <Card>
+        <Text style={styles.sectionTitle}>Earnings Summary</Text>
+        <Text style={styles.earningText}>Total Earned: ${dashboardData.earnings.totalEarned.toFixed(2)}</Text>
+        <Text style={styles.earningText}>Pending Clearance: ${dashboardData.earnings.pendingClearance.toFixed(2)}</Text>
+      </Card>
+      <Card>
+        <Text style={styles.sectionTitle}>Booking History</Text>
+        {dashboardData.bookingHistory.map(booking => (
+          <View key={booking.bookingId} style={styles.listItem}>
+            <Text>Booking with {booking.userId} - {new Date(booking.date).toLocaleDateString()}</Text>
+            <Text>Status: {booking.status}</Text>
+          </View>
+        ))}
+      </Card>
+      <Card>
+        <Text style={styles.sectionTitle}>Your Availability</Text>
+        {dashboardData.availability.map(slot => (
+          <View key={slot.id} style={styles.listItem}>
+            <Text>{slot.day}: {slot.startTime} - {slot.endTime} ({slot.type})</Text>
+          </View>
+        ))}
+      </Card>
+    </ScrollView>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f0f2f5', padding: 8 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { textAlign: 'center', marginTop: 20 },
+  sectionTitle: { fontSize: fontSizes.title, fontWeight: 'bold', marginBottom: 10 },
+  earningText: { fontSize: fontSizes.body, marginBottom: 5 },
+  listItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
+});
 
 export default CreatorDashboardScreen;
